@@ -1,0 +1,5 @@
+Makefile
+mkmf.log
+*.gem
+*.o
+*.so
