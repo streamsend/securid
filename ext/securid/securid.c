@@ -31,14 +31,14 @@ static VALUE t_authenticate (VALUE self, VALUE username, VALUE passcode)
 	// in the next developer-supplied response
 	SD_I32  nextRespLen;
 
-	// the size of the developer-supplied storage for the prompt
-	// string
-	SD_I32  promptStrLen = 512;
-
 	// a developer-supplied character array to be filled in by the
 	// API with the string that the caller uses as the next message
 	// displayed to the user
-	SD_CHAR promptStr[promptStrLen];
+	SD_CHAR promptStr[512];
+
+	// the size of the developer-supplied storage for the prompt
+	// string
+	SD_I32  promptStrLen;
 
 	// a flag that is set by the API to indicate whether more data
 	// is needed by the authentication context
@@ -62,6 +62,9 @@ static VALUE t_authenticate (VALUE self, VALUE username, VALUE passcode)
 
 	int retVal;
 
+	// reset size of prompt string
+	promptStrLen = sizeof(promptStr);
+
 	// start our authentication attempt by first sending the username to
 	// the authentication manager.
 	retVal = AceStartAuth(&aceHdl, userID, strlen(userID), &moreData, &echoFlag, &respTimeout, &nextRespLen, promptStr, &promptStrLen);
@@ -78,6 +81,9 @@ static VALUE t_authenticate (VALUE self, VALUE username, VALUE passcode)
 		AceCloseAuth(aceHdl);
 		rb_raise(rb_eSecurIDError, "Authentication manager did not ask for a passcode");
 	}
+
+	// reset size of prompt string
+	promptStrLen = sizeof(promptStr);
 
 	// the authentication manager wants us to prompt the user for more data. because
 	// this function is non-interactive, we assume the manager wants the passcode. since
