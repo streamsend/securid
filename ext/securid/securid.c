@@ -57,7 +57,7 @@ static VALUE t_authenticate (VALUE self, VALUE username, VALUE passcode)
 	if (!AceInitialize())
 	{
 		// the authentication library failed to initialize.
-		rb_raise(rb_eSecurIDError, "failed to initialize authentication library");
+		rb_raise(rb_eSecurIDError, "Failed to initialize authentication library");
 	}
 
 	int retVal;
@@ -68,15 +68,15 @@ static VALUE t_authenticate (VALUE self, VALUE username, VALUE passcode)
 
 	if (retVal != ACM_OK)
 	{
-		// the authentication process could not be started for some reason.
-		rb_raise(rb_eSecurIDError, "failed to start authentication attempt");
+		// the authentication attempt could not be started for some reason.
+		rb_raise(rb_eSecurIDError, "Failed to start authentication attempt - Code %d", retVal);
 	}
 
 	if (!moreData)
 	{
 		// the authentication manager should have asked for a passcode
 		AceCloseAuth(aceHdl);
-		rb_raise(rb_eSecurIDError, "authentication manager did not ask for a passcode");
+		rb_raise(rb_eSecurIDError, "Authentication manager did not ask for a passcode");
 	}
 
 	// the authentication manager wants us to prompt the user for more data. because
@@ -84,30 +84,40 @@ static VALUE t_authenticate (VALUE self, VALUE username, VALUE passcode)
 	// we already have it, we'll pass it along without prompting the user.
 	retVal = AceContinueAuth(aceHdl, pass, strlen(pass), &moreData, &echoFlag, &respTimeout, &nextRespLen, promptStr, &promptStrLen);
 
-	// initialize our authentication status variable. assume the worst.
-	authStatus = ACM_ACCESS_DENIED;
+	if (retVal != ACM_OK)
+	{
+		// the authentication attempt could not be continued for some reason.
+		AceCloseAuth(aceHdl);
+		rb_raise(rb_eSecurIDError, "Failed to continue authentication attempt - Code %d", retVal);
+	}
 
 	if (moreData)
 	{
 		// either our assumption that the authentication manager wanted the passcode was
 		// incorrect, or something else went wrong.
 		AceCloseAuth(aceHdl);
-		rb_raise(rb_eSecurIDError, "authentication manager asked for more than a passcode");
+		rb_raise(rb_eSecurIDError, "Authentication manager asked for more than a passcode");
 	}
 
 	// ask the authentication manager for the status of this authentication attempt.
-	// if this call fails for some reason, our +authStatus+ variable should still be
-	// set to its original intialized value of ACM_ACCESS_DENIED.
 	retVal = AceGetAuthenticationStatus(aceHdl, &authStatus);
 
 	// finalize this authentication attempt by closing our handle.
 	AceCloseAuth(aceHdl);
 
+	if (retVal != ACE_SUCCESS)
+	{
+		// the authentication status could not be retrieved for some reason.
+		rb_raise(rb_eSecurIDError, "Failed to retrieve authentication status - Code %d", retVal);
+	}
+
 	// check the status of the authentication attempt and return true or false.
 	if (authStatus == ACM_OK)
 		return Qtrue;
+	else if (authStatus == ACM_ACCESS_DENIED)
+		return Qfalse;
 
-	return Qfalse;
+	rb_raise(rb_eSecurIDError, "Unexpected authentication status - Code %d", authStatus);
 }
 
 void Init_securid ()
