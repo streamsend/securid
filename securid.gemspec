@@ -10,4 +10,5 @@ Gem::Specification.new do |s|
   s.files = ["ext/securid/securid.c", "ext/securid/extconf.rb"]
   s.require_paths = ["lib"]
   s.summary = "A library for authenticating with an RSA SecurID ACE Authentication Server"
+  s.homepage = "http://github.com/ezpub/securid"
 end
